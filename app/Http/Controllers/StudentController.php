@@ -8,10 +8,12 @@ use Illuminate\Http\Request;
 
 class StudentController extends Controller
 {
+   
     public function index(Request $request)
     {
         $query = Student::with('gender')->latest();
 
+      
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
                 $q->where('name',  'like', '%' . $request->search . '%')
@@ -20,23 +22,17 @@ class StudentController extends Controller
             });
         }
 
+
         if ($request->filled('gender_id')) {
             $query->where('gender_id', $request->gender_id);
         }
 
         $students = $query->get();
-        $genders  = Gender::orderBy('name')->get();
 
-        return view('pages.students.index', compact('students', 'genders'));
+        
+        return response()->json($students);
     }
 
-    public function create()
-    {
-        $student = new Student();
-        $genders = Gender::orderBy('name')->get();
-
-        return view('pages.students.create', compact('student', 'genders'));
-    }
 
     public function store(Request $request)
     {
@@ -47,26 +43,26 @@ class StudentController extends Controller
             'gender_id' => ['required', 'exists:genders,id'],
         ]);
 
-        Student::create($validated);
+        $student = Student::create($validated);
 
-        return redirect()->route('students.index')
-            ->with('success', 'Student created successfully.');
+      
+        return response()->json([
+            'success' => true,
+            'message' => 'Student created successfully.',
+            'data'    => $student->load('gender')
+        ], 201); 
+       
     }
+
 
     public function show(Student $student)
     {
         $student->load('gender');
 
-        return view('pages.students.show', compact('student'));
+        return response()->json($student);
     }
 
-    public function edit(Student $student)
-    {
-        $genders = Gender::orderBy('name')->get();
-
-        return view('pages.students.edit', compact('student', 'genders'));
-    }
-
+    
     public function update(Request $request, Student $student)
     {
         $validated = $request->validate([
@@ -78,15 +74,28 @@ class StudentController extends Controller
 
         $student->update($validated);
 
-        return redirect()->route('students.index')
-            ->with('success', 'Student updated successfully.');
+        return response()->json([
+            'success' => true,
+            'message' => 'Student updated successfully.',
+            'data'    => $student->load('gender')
+        ]);
     }
 
+    // 5. លុបទិន្នន័យសិស្សតាមសំណើពី React
     public function destroy(Student $student)
     {
         $student->delete();
 
-        return redirect()->route('students.index')
-            ->with('success', 'Student deleted successfully.');
+        return response()->json([
+            'success' => true,
+            'message' => 'Student deleted successfully.'
+        ]);
+    }
+
+    // 6. បង្កើត API បន្ថែមមួយទៀតសម្រាប់ឱ្យ React ទាញយកបញ្ជីភេទ (Genders) ទៅដាក់ក្នុង Dropdown Option
+    public function getGenders()
+    {
+        $genders = Gender::orderBy('name')->get();
+        return response()->json($genders);
     }
 }
